@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FR-193 - Inspeção de Alojamento | DASCO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dasco-blue: #002B5B;
+            --dasco-light: #00A8E8;
+            --dasco-dark: #001C3D;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, var(--dasco-dark), #0a0a0a);
+            color: #e0e0e0;
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+        }
+
+        .futuristic-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--dasco-light);
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--dasco-light);
+            border-bottom: 2px solid rgba(0, 168, 232, 0.3);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .radio-group input[type="radio"]:checked + label {
+            background-color: var(--dasco-light);
+            color: white;
+            box-shadow: 0 0 10px var(--dasco-light);
+        }
+
+        input, textarea {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+        }
+
+        .signature-container {
+            background: white;
+            border-radius: 8px;
+            width: 100%;
+            height: 150px;
+            touch-action: none;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .photo-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border: 2px solid var(--dasco-light);
+            border-radius: 8px;
+            display: none;
+        }
+
+        /* Estrutura Oculta do PDF para renderização */
+        #pdf-render-area {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            width: 800px;
+            background: white;
+            color: black;
+        }
+
+        .pdf-page {
+            padding: 40px;
+            background: white;
+            width: 800px;
+            min-height: 1120px; /* Proporção A4 */
+            box-sizing: border-box;
+            page-break-after: always;
+        }
+
+        .pdf-header { width: 100%; border: 2px solid black; border-collapse: collapse; }
+        .pdf-header td { border: 1px solid black; padding: 8px; text-align: center; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 6px; font-size: 10px; }
+        .pdf-cat { background: #e2e8f0; font-weight: bold; text-align: left; padding-left: 10px; font-size: 11px; }
+        
+        .photo-report-item {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .photo-report-img {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            margin: 0 auto 10px auto;
+            border: 1px solid #000;
+        }
+        .photo-report-text {
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            background: #f8f8f8;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-4xl font-bold text-white italic">DASCO</h1>
+                <p class="text-xs text-blue-300">SOLUÇÕES EM ENGENHARIA</p>
+            </div>
+            <div class="text-center md:text-right">
+                <h2 class="text-xl font-bold text-white font-orbitron">FR-193</h2>
+                <p class="text-xs opacity-70 italic">Inspeção de Alojamento - Rev. 1</p>
+            </div>
+        </header>
+
+        <form id="inspectionForm" class="space-y-6">
+            <!-- Cabeçalho de Dados -->
+            <div class="futuristic-card p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-xs uppercase text-blue-300">Obra / Cidade</label>
+                    <input list="cidades" name="obra" class="w-full p-2 rounded" placeholder="Selecione ou digite..." required>
+                    <datalist id="cidades">
+                        <option value="Itatiba"><option value="Itupeva"><option value="Morungaba">
+                        <option value="Jarinu"><option value="Campo Limpo"><option value="Várzea Paulista">
+                        <option value="Cabreúva">
+                    </datalist>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs uppercase text-blue-300">Empresa</label>
+                    <input type="text" name="empresa" value="Dasco" class="w-full p-2 rounded" required>
+                </div>
+                <div class="md:col-span-2 space-y-1">
+                    <label class="text-xs uppercase text-blue-300">Endereço Completo</label>
+                    <input type="text" name="endereco" class="w-full p-2 rounded" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs uppercase text-blue-300">Qtd. Funcionários Previstos</label>
+                    <input type="number" name="funcionarios" class="w-full p-2 rounded" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs uppercase text-blue-300">Data</label>
+                    <input type="date" name="data" id="currentDate" class="w-full p-2 rounded" required>
+                </div>
+            </div>
+
+            <!-- Itens de Inspeção -->
+            <div id="sections-container"></div>
+
+            <!-- Observações -->
+            <div class="futuristic-card p-6 rounded-xl">
+                <h3 class="section-title">Observações Gerais</h3>
+                <textarea name="observacoes" rows="3" class="w-full p-3 rounded" placeholder="Descreva aqui detalhes extras..."></textarea>
+            </div>
+
+            <!-- Assinaturas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="futuristic-card p-4 rounded-xl">
+                    <label class="text-xs uppercase text-blue-300 block mb-2">Assinatura: Inspetor</label>
+                    <div class="signature-container mb-2">
+                        <canvas id="sig-inspetor"></canvas>
+                    </div>
+                    <button type="button" onclick="padInspetor.clear()" class="text-[10px] text-red-400 uppercase">Limpar</button>
+                    <input type="text" name="nome_inspetor" placeholder="Nome do Inspetor" class="w-full mt-2 p-2 text-sm rounded">
+                </div>
+                <div class="futuristic-card p-4 rounded-xl">
+                    <label class="text-xs uppercase text-blue-300 block mb-2">Assinatura: Responsável Alojamento</label>
+                    <div class="signature-container mb-2">
+                        <canvas id="sig-resp"></canvas>
+                    </div>
+                    <button type="button" onclick="padResp.clear()" class="text-[10px] text-red-400 uppercase">Limpar</button>
+                    <input type="text" name="nome_resp" placeholder="Nome do Responsável" class="w-full mt-2 p-2 text-sm rounded">
+                </div>
+            </div>
+
+            <button type="button" onclick="generatePDF()" id="btnPDF" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 p-5 rounded-full font-bold text-white shadow-xl hover:scale-[1.01] transition-transform">
+                GERAR RELATÓRIO COMPLETO (PDF)
+            </button>
+        </form>
+    </div>
+
+    <!-- ÁREA DE RENDERIZAÇÃO DO PDF (OCULTA) -->
+    <div id="pdf-render-area">
+        <!-- PÁGINA 1: FORMULÁRIO -->
+        <div class="pdf-page" id="p1">
+            <table class="pdf-header">
+                <tr>
+                    <td rowspan="2" style="width:20%; font-weight:bold; font-size:22px">DASCO</td>
+                    <td style="width:60%; font-weight:bold; font-size:14px">FR-193 - INSPEÇÃO DE ALOJAMENTO</td>
+                    <td style="width:20%; font-size:10px">Rev. 01<br>03/08/2023</td>
+                </tr>
+            </table>
+            <div style="margin-top:15px; font-size:12px; border:1px solid #000; padding:10px">
+                <strong>Obra/Cidade:</strong> <span id="p-obra"></span> | <strong>Empresa:</strong> <span id="p-empresa"></span><br>
+                <strong>Endereço:</strong> <span id="p-endereco"></span><br>
+                <strong>Qtd. Funcionários:</strong> <span id="p-func"></span> | <strong>Data:</strong> <span id="p-data"></span>
+            </div>
+            <table class="pdf-table">
+                <thead>
+                    <tr style="background:#eee">
+                        <th style="width:30px">ID</th>
+                        <th>ITEM DE INSPEÇÃO</th>
+                        <th style="width:130px">AVALIAÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody id="p-table-body"></tbody>
+            </table>
+            <div style="margin-top:10px; border:1px solid black; padding:8px; font-size:11px">
+                <strong>OBSERVAÇÕES:</strong> <span id="p-obs"></span>
+            </div>
+            <div style="margin-top:30px; display:flex; justify-content:space-around">
+                <div style="text-align:center; width:45%">
+                    <img id="p-sig-insp" style="max-height:60px; display:none; margin:0 auto">
+                    <div style="border-top:1px solid black; font-size:10px; margin-top:5px">RESPONSÁVEL INSPEÇÃO: <span id="p-nome-insp"></span></div>
+                </div>
+                <div style="text-align:center; width:45%">
+                    <img id="p-sig-resp" style="max-height:60px; display:none; margin:0 auto">
+                    <div style="border-top:1px solid black; font-size:10px; margin-top:5px">RESPONSÁVEL ALOJAMENTO: <span id="p-nome-resp"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA 2+: RELATÓRIO FOTOGRÁFICO (Dinâmico) -->
+        <div id="photo-pages-container"></div>
+    </div>
+
+    <script>
+        const formItems = [
+            { cat: "INSPEÇÃO DORMITÓRIOS", items: [
+                "Os dormitórios não ultrapassam a capacidade de máxima de 8 trabalhadores?",
+                "Possui camas correspondente ao nº de trabalhadores alojados, vedado o uso de 3 camas na vertical?",
+                "Ter no mínimo, a relação de 3m² por cama simples ou 4,5m² por beliche?",
+                "As camas e beliches possuem dimensões mínimas de 0,70m por 1,90m?",
+                "Havendo beliches, possui altura mínima de 1,10m entre a última cama e o teto?",
+                "São disponibilizadas camas para todas as pessoas alojadas?",
+                "Possui colchões certificados pelo INMETRO?",
+                "Possui enxoval limpo e higienizado adequado às condições climáticas?",
+                "Componentes das camas sem rebarbas ou arestas cortantes?",
+                "Possui armários com trancamento?",
+                "Possui conforto acústico?",
+                "Preferência de alojar no mesmo quarto colaboradores do mesmo turno?",
+                "Proibição de preparo de alimentos dentro dos dormitórios?"
+            ]},
+            { cat: "INSPEÇÃO COZINHA / REFEITÓRIO", items: [
+                "Possui piso e paredes de material lavável e impermeável?",
+                "Local de preparo com água corrente e armário para utensílios?",
+                "Fornecimento de água potável (1 bebedouro para cada 25 trab)?",
+                "Armazenamento de perecíveis em geladeira adequada?",
+                "Dispõe de meio para aquecimento das refeições?",
+                "Botijão a gás instalado em local aberto e ventilado?",
+                "Possui assentos e mesas em número suficiente e laváveis?",
+                "Talheres higienizados e lacrados individualmente?",
+                "Possui lixeira com tampa?"
+            ]},
+            { cat: "INSPEÇÃO BANHEIRO", items: [
+                "Dimensionamento de 1 banheiro para cada 10 trabalhadores?",
+                "Instalações completas (pia, vaso, descarga, cesto com tampa)?",
+                "Abastecido com papel higiênico e sabonete?",
+                "Chuveiros com água quente, estrado e suporte?",
+                "Local ventilado para secagem de toalhas?",
+                "Orientação para não compartilhamento de itens pessoais?",
+                "Realizada limpeza diária dos sanitários?"
+            ]},
+            { cat: "INSPEÇÃO GERAL", items: [
+                "Piso de material lavável e impermeável no geral?",
+                "Ventilação adequada (sem umidade/mofo)?",
+                "Condições adequadas de conservação e higiene?",
+                "Controle de vetores e pragas garantido?",
+                "Instalações elétricas protegidas?",
+                "Tanques para lavar roupa ou serviço de lavanderia?",
+                "Condições para recreação dos trabalhadores?",
+                "Disponibilidade de material de limpeza?",
+                "Os responsáveis pela limpeza receberam orientação adequada?",
+                "Conhecimento do fluxo de atendimento médico/emergência?",
+                "É garantida a coleta de lixo diária e lavagem de roupa de cama?",
+                "Existe laudo de potabilidade da água?",
+                "Foi realizada a limpeza da caixa d'água?"
+            ]}
+        ];
+
+        const padInspetor = new SignaturePad(document.getElementById('sig-inspetor'));
+        const padResp = new SignaturePad(document.getElementById('sig-resp'));
+
+        function resizeCanvas() {
+            [document.getElementById('sig-inspetor'), document.getElementById('sig-resp')].forEach(c => {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                c.width = c.offsetWidth * ratio;
+                c.height = c.offsetHeight * ratio;
+                c.getContext("2d").scale(ratio, ratio);
+            });
+        }
+        window.onresize = resizeCanvas;
+        setTimeout(resizeCanvas, 500);
+
+        // Renderização do Formulário na Tela
+        let globalIdx = 1;
+        const container = document.getElementById('sections-container');
+        formItems.forEach(section => {
+            let html = `<div class="futuristic-card p-6 rounded-xl mb-6"><h3 class="section-title text-sm">${section.cat}</h3>`;
+            section.items.forEach(text => {
+                html += `
+                <div class="mb-6 border-b border-white/5 pb-4 last:border-0">
+                    <p class="text-sm mb-3">${globalIdx}. ${text}</p>
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="radio-group flex gap-2">
+                            <input type="radio" id="c_${globalIdx}" name="i_${globalIdx}" value="C" class="hidden" onchange="autoSave()">
+                            <label for="c_${globalIdx}" class="px-4 py-2 border border-white/20 rounded cursor-pointer text-xs">C</label>
+                            <input type="radio" id="nc_${globalIdx}" name="i_${globalIdx}" value="NC" class="hidden" onchange="autoSave()">
+                            <label for="nc_${globalIdx}" class="px-4 py-2 border border-white/20 rounded cursor-pointer text-xs">NC</label>
+                            <input type="radio" id="na_${globalIdx}" name="i_${globalIdx}" value="NA" class="hidden" onchange="autoSave()">
+                            <label for="na_${globalIdx}" class="px-4 py-2 border border-white/20 rounded cursor-pointer text-xs">NA</label>
+                        </div>
+                        <label class="bg-blue-600/20 p-2 px-4 border border-blue-400/30 rounded text-xs cursor-pointer uppercase">📷 Anexar Foto
+                            <input type="file" capture="environment" accept="image/*" class="hidden" onchange="handleImg(this, ${globalIdx})">
+                        </label>
+                        <img id="img_${globalIdx}" class="photo-preview">
+                    </div>
+                </div>`;
+                globalIdx++;
+            });
+            container.innerHTML += html + `</div>`;
+        });
+
+        function handleImg(input, id) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.getElementById(`img_${id}`);
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    autoSave();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function autoSave() {
+            const formData = {};
+            const inputs = document.querySelectorAll('#inspectionForm input, #inspectionForm textarea');
+            inputs.forEach(input => {
+                if (input.type === 'radio') {
+                    if (input.checked) formData[input.name] = input.value;
+                } else if (input.type !== 'file') {
+                    formData[input.name] = input.value;
+                }
+            });
+            localStorage.setItem('dasco_v3_save', JSON.stringify(formData));
+        }
+
+        function loadAutoSave() {
+            const data = JSON.parse(localStorage.getItem('dasco_v3_save'));
+            if (!data) return;
+            const form = document.getElementById('inspectionForm');
+            Object.keys(data).forEach(key => {
+                const el = form.elements[key];
+                if (el) {
+                    if (el instanceof RadioNodeList) {
+                        Array.from(el).forEach(r => { if (r.value === data[key]) r.checked = true; });
+                    } else {
+                        el.value = data[key];
+                    }
+                }
+            });
+        }
+
+        document.querySelectorAll('input, textarea').forEach(el => el.addEventListener('input', autoSave));
+        window.onload = () => {
+            document.getElementById('currentDate').valueAsDate = new Date();
+            loadAutoSave();
+            resizeCanvas();
+        };
+
+        async function generatePDF() {
+            const btn = document.getElementById('btnPDF');
+            btn.innerText = "MONTANDO RELATÓRIO... AGUARDE";
+            btn.disabled = true;
+
+            const form = document.getElementById('inspectionForm');
+            
+            // Dados Cabeçalho PDF
+            document.getElementById('p-obra').innerText = form.obra.value;
+            document.getElementById('p-empresa').innerText = form.empresa.value;
+            document.getElementById('p-endereco').innerText = form.endereco.value;
+            document.getElementById('p-func').innerText = form.funcionarios.value;
+            document.getElementById('p-data').innerText = form.data.value;
+            document.getElementById('p-obs').innerText = form.observacoes.value;
+            document.getElementById('p-nome-insp').innerText = form.nome_inspetor.value;
+            document.getElementById('p-nome-resp').innerText = form.nome_resp.value;
+
+            // Assinaturas
+            if (!padInspetor.isEmpty()) {
+                const pSig = document.getElementById('p-sig-insp');
+                pSig.src = padInspetor.toDataURL();
+                pSig.style.display = 'block';
+            }
+            if (!padResp.isEmpty()) {
+                const pSig = document.getElementById('p-sig-resp');
+                pSig.src = padResp.toDataURL();
+                pSig.style.display = 'block';
+            }
+
+            // Tabela de Itens (Pag 1)
+            const tbody = document.getElementById('p-table-body');
+            tbody.innerHTML = "";
+            const photoPages = document.getElementById('photo-pages-container');
+            photoPages.innerHTML = "";
+
+            let photoIdx = 1;
+            let currentPhotoPage = null;
+            let itemsOnCurrentPhotoPage = 0;
+
+            formItems.forEach(section => {
+                tbody.innerHTML += `<tr><td colspan="3" class="pdf-cat">${section.cat}</td></tr>`;
+                section.items.forEach(text => {
+                    const status = form[`i_${photoIdx}`]?.value || "-";
+                    const photoSrc = document.getElementById(`img_${photoIdx}`).src;
+
+                    // Adiciona na tabela principal
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="text-align:center">${photoIdx}</td>
+                            <td>${text}</td>
+                            <td style="text-align:center; font-weight:bold">${status === 'C' ? 'CONFORME' : status === 'NC' ? 'NÃO CONFORME' : 'N/A'}</td>
+                        </tr>`;
+
+                    // Se tiver foto, adiciona no relatório fotográfico
+                    if (photoSrc && photoSrc.startsWith('data:image')) {
+                        if (itemsOnCurrentPhotoPage === 0) {
+                            currentPhotoPage = document.createElement('div');
+                            currentPhotoPage.className = 'pdf-page';
+                            currentPhotoPage.innerHTML = `<h2 style="text-align:center; font-family:Orbitron; border-bottom:2px solid #000; padding-bottom:10px">RELATÓRIO FOTOGRÁFICO</h2><br>`;
+                            photoPages.appendChild(currentPhotoPage);
+                        }
+
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'photo-report-item';
+                        itemDiv.innerHTML = `
+                            <img src="${photoSrc}" class="photo-report-img">
+                            <div class="photo-report-text">ITEM ${photoIdx}: ${text}</div>
+                        `;
+                        currentPhotoPage.appendChild(itemDiv);
+                        
+                        itemsOnCurrentPhotoPage++;
+                        if (itemsOnCurrentPhotoPage >= 2) { // 2 fotos por página para ficar grande
+                            itemsOnCurrentPhotoPage = 0;
+                        }
+                    }
+                    photoIdx++;
+                });
+            });
+
+            // Geração Real do PDF
+            try {
+                const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+                const pages = [document.getElementById('p1'), ...photoPages.children];
+
+                for (let i = 0; i < pages.size || i < pages.length; i++) {
+                    const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                    if (i > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                }
+
+                pdf.save(`FR193_Inspeção_${form.obra.value}_${form.data.value}.pdf`);
+                localStorage.removeItem('dasco_v3_save');
+                alert("PDF gerado com sucesso! Relatório técnico e fotográfico incluídos.");
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao processar PDF. Verifique o tamanho das fotos.");
+            } finally {
+                btn.innerText = "GERAR RELATÓRIO COMPLETO (PDF)";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
